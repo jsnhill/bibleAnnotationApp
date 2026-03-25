@@ -54,6 +54,12 @@ export default function Auth({ onAuthenticated }: AuthProps) {
 
   const sharedPassword = data.find((d) => d.key === 'shared_password')?.value;
   const adminPassword = data.find((d) => d.key === 'admin_password')?.value;
+  const sharedPassword = data.find((d) => d.key === 'shared_password')?.value;
+  const adminPassword = data.find((d) => d.key === 'admin_password')?.value;
+  console.log('data returned:', data);
+  console.log('sharedPassword:', sharedPassword);
+  console.log('adminPassword:', adminPassword);
+  console.log('entered password:', password);
 
 if (password === adminPassword) {
     setIsAdmin(true);
