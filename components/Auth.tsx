@@ -16,6 +16,7 @@ export default function Auth({ onAuthenticated }: AuthProps) {
   const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (step === 'select-user') {
@@ -35,37 +36,42 @@ export default function Auth({ onAuthenticated }: AuthProps) {
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    // Verify shared password
-    const { data, error } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'shared_password')
-      .single();
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['shared_password', 'admin_password']);
 
-    setLoading(false);
+  setLoading(false);
 
-    if (error || !data) {
-      setError('Unable to verify password. Please try again.');
-      return;
-    }
+  if (error || !data) {
+    setError('Unable to verify password. Please try again.');
+    return;
+  }
 
-    if (data.value === password) {
-      setStep('select-user');
-    } else {
-      setError('Incorrect password. Please try again.');
-    }
-  };
+  const sharedPassword = data.find((d) => d.key === 'shared_password')?.value;
+  const adminPassword = data.find((d) => d.key === 'admin_password')?.value;
 
-  const handleUserSelect = (userId: string, userName: string) => {
-    // Store in session
-    sessionStorage.setItem('userId', userId);
-    sessionStorage.setItem('userName', userName);
-    onAuthenticated(userId, userName);
-  };
+  if (password === adminPassword) {
+    setIsAdmin(true);
+    setStep('select-user');
+  } else if (password === sharedPassword) {
+    setIsAdmin(false);
+    setStep('select-user');
+  } else {
+    setError('Incorrect password. Please try again.');
+  }
+};
+
+ const handleUserSelect = (userId: string, userName: string) => {
+  sessionStorage.setItem('userId', userId);
+  sessionStorage.setItem('userName', userName);
+  sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+  onAuthenticated(userId, userName, isAdmin);
+};
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
