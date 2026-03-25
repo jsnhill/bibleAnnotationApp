@@ -55,11 +55,13 @@ export default function Auth({ onAuthenticated }: AuthProps) {
   const sharedPassword = data.find((d) => d.key === 'shared_password')?.value;
   const adminPassword = data.find((d) => d.key === 'admin_password')?.value;
 
-  if (password === adminPassword) {
+if (password === adminPassword) {
     setIsAdmin(true);
+    sessionStorage.setItem('isAdmin', 'true');
     setStep('select-user');
   } else if (password === sharedPassword) {
     setIsAdmin(false);
+    sessionStorage.setItem('isAdmin', 'false');
     setStep('select-user');
   } else {
     setError('Incorrect password. Please try again.');
