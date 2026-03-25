@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@/lib/types';
 
 interface AuthProps {
-  onAuthenticated: (userId: string, userName: string) => void;
+  onAuthenticated: (userId: string, userName: string, isAdmin: boolean) => void;
 }
 
 export default function Auth({ onAuthenticated }: AuthProps) {
