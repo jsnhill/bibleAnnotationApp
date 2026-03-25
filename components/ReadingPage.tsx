@@ -206,17 +206,15 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <div className="space-y-4">
-            {verses.map((verse) => (
-              <VerseDisplay
-                key={verse.id}
-                verse={verse}
-                onClick={() => handleVerseClick(verse)}
-              />
-            ))}
-          </div>
+      <p className="leading-relaxed text-base">
+  {verses.map((verse) => (
+    <VerseDisplay
+      key={verse.id}
+      verse={verse}
+      onClick={() => handleVerseClick(verse)}
+    />
+  ))}
+      </p>
 
           {/* Complete Button */}
           <div className="mt-8 pt-8 border-t">
