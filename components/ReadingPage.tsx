@@ -233,20 +233,38 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
           </p>
 
           {/* Complete Button */}
-          <div className="mt-8 pt-8 border-t">
-            {hasCompleted ? (
-              <div className="text-center text-green-600 font-medium">
-                ✓ You've marked this reading as complete
-              </div>
-            ) : (
-              <button
-                onClick={handleMarkComplete}
-                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition font-medium"
-              >
-                Mark as Finished Reading
-              </button>
-            )}
+<div className="mt-8 pt-8 border-t">
+  {hasCompleted ? (
+    <div className="space-y-3">
+      <div className="text-center text-green-600 font-medium">
+        ✓ You've marked this reading as complete
+      </div>
+      {(() => {
+        const currentIndex = allReadings.findIndex(r => r.id === currentReading.id);
+        const nextReading = allReadings[currentIndex + 1];
+        return nextReading ? (
+          <button
+            onClick={() => handleReadingSelect(nextReading)}
+            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition font-medium"
+          >
+            Next Reading: {nextReading.book_name} {nextReading.chapter_number} →
+          </button>
+        ) : (
+          <div className="text-center text-gray-500 text-sm">
+            You've reached the end of the reading plan!
           </div>
+        );
+      })()}
+    </div>
+  ) : (
+    <button
+      onClick={handleMarkComplete}
+      className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition font-medium"
+    >
+      Mark as Finished Reading
+    </button>
+  )}
+</div>
         </div>
       </div>
 
