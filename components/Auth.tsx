@@ -29,7 +29,6 @@ export default function Auth({ onAuthenticated }: AuthProps) {
       .from('users')
       .select('*')
       .order('first_name');
-    
     if (data) {
       setUsers(data);
     }
@@ -134,4 +133,98 @@ export default function Auth({ onAuthenticated }: AuthProps) {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 b
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-red-600 text-sm">{error}</p>
+            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {loading ? 'Verifying...' : 'Continue'}
+            </button>
+          </form>
+        )}
+
+        {step === 'select-user' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Welcome! Who are you?</h2>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {users.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => handleUserSelect(user.id, `${user.first_name} ${user.last_name}`)}
+                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
+                >
+                  <span className="font-medium">{user.first_name} {user.last_name}</span>
+                  <span className="text-gray-500 ml-2">({user.initials})</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setStep('register')}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition mt-4"
+            >
+              New User? Register Here
+            </button>
+          </div>
+        )}
+
+        {step === 'register' && (
+          <form onSubmit={handleRegister} className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Register New User</h2>
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                First Name
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-red-600 text-sm">{error}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStep('select-user')}
+                className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {loading ? 'Registering...' : 'Register'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
