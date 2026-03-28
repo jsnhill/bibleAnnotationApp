@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Reading, VerseWithComments, Comment, User } from '@/lib/types';
+import { Reading, VerseWithComments } from '@/lib/types';
 import VerseDisplay from './VerseDisplay';
 import CommentModal from './CommentModal';
+import ParticipantsModal from './ParticipantsModal'; // ← NEW IMPORT
 
 interface ReadingPageProps {
   userId: string;
@@ -13,37 +14,16 @@ interface ReadingPageProps {
 
 export default function ReadingPage({ userId, userName }: ReadingPageProps) {
   const [currentReading, setCurrentReading] = useState<Reading | null>(null);
-  const [allReadings, setAllReadings] = useState<Reading[]>([]);
   const [verses, setVerses] = useState<VerseWithComments[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVerse, setSelectedVerse] = useState<VerseWithComments | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showParticipants, setShowParticipants] = useState(false); // ← NEW STATE
 
   useEffect(() => {
-    loadAllReadings();
     loadCurrentReading();
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const loadAllReadings = async () => {
-    const { data } = await supabase
-      .from('readings')
-      .select('*')
-      .order('order_index');
-    if (data) setAllReadings(data);
-  };
 
   const loadCurrentReading = async () => {
     setLoading(true);
@@ -74,10 +54,7 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
 
     const { data: comments } = await supabase
       .from('comments')
-      .select(`
-        *,
-        user:users(*)
-      `)
+      .select('*, user:users(*)')
       .eq('reading_id', readingId);
 
     if (bibleVerses) {
@@ -109,14 +86,6 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
     setHasCompleted(!!data);
   };
 
-  const handleReadingSelect = async (reading: Reading) => {
-    setShowDropdown(false);
-    setCurrentReading(reading);
-    setLoading(true);
-    await loadVerses(reading.id, reading.book_name, reading.chapter_number);
-    await checkCompletion(reading.id);
-  };
-
   const handleVerseClick = (verse: VerseWithComments) => {
     setSelectedVerse(verse);
     setShowCommentModal(true);
@@ -124,14 +93,12 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
 
   const handleCommentSubmit = async (verseNumber: number, commentText: string) => {
     if (!currentReading) return;
-    const { error } = await supabase
-      .from('comments')
-      .insert({
-        user_id: userId,
-        reading_id: currentReading.id,
-        verse_number: verseNumber,
-        comment_text: commentText,
-      });
+    const { error } = await supabase.from('comments').insert({
+      user_id: userId,
+      reading_id: currentReading.id,
+      verse_number: verseNumber,
+      comment_text: commentText,
+    });
     if (!error && currentReading) {
       await loadVerses(currentReading.id, currentReading.book_name, currentReading.chapter_number);
     }
@@ -140,16 +107,30 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
 
   const handleMarkComplete = async () => {
     if (!currentReading) return;
-    const { error } = await supabase
-      .from('reading_completions')
-      .insert({
-        user_id: userId,
-        reading_id: currentReading.id,
-      });
+    const { error } = await supabase.from('reading_completions').insert({
+      user_id: userId,
+      reading_id: currentReading.id,
+    });
     if (!error) setHasCompleted(true);
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const navigateReading = async (direction: 'prev' | 'next') => {
+    if (!currentReading) return;
+    const newIndex =
+      direction === 'prev'
+        ? currentReading.order_index - 1
+        : currentReading.order_index + 1;
+    const { data: reading } = await supabase
+      .from('readings')
+      .select('*')
+      .eq('order_index', newIndex)
+      .single();
+    if (reading) {
+      setCurrentReading(reading);
+      await loadVerses(reading.id, reading.book_name, reading.chapter_number);
+      await checkCompletion(reading.id);
+    }
+  };
 
   if (loading) {
     return (
@@ -175,46 +156,49 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-center mb-2">
-            {/* Reading Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 text-2xl font-bold text-gray-800 hover:text-blue-600 transition"
-              >
-                {currentReading.book_name} {currentReading.chapter_number}
-                <span className="text-lg">▾</span>
-              </button>
-              {showDropdown && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-56 max-h-72 overflow-y-auto">
-                  {allReadings.map((reading) => {
-                    const isCurrent = reading.id === currentReading.id;
-                    const isPast = reading.end_date < today;
-                    const isFuture = reading.start_date > today;
-                    return (
-                      <button
-                        key={reading.id}
-                        onClick={() => handleReadingSelect(reading)}
-                        className={`w-full text-left px-4 py-2 hover:bg-blue-50 transition flex items-center justify-between gap-4
-                          ${isCurrent ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700'}
-                        `}
-                      >
-                        <span>{reading.book_name} {reading.chapter_number}</span>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">
-                          {isPast ? '✓ past' : isFuture ? 'upcoming' : '● now'}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => navigateReading('prev')}
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              ← Previous
+            </button>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {currentReading.book_name} {currentReading.chapter_number}
+            </h1>
+            <button
+              onClick={() => navigateReading('next')}
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Next →
+            </button>
           </div>
           <div className="text-sm text-gray-600 text-center">
-            Reading for {new Date(currentReading.start_date).toLocaleDateString()} - {new Date(currentReading.end_date).toLocaleDateString()}
+            Reading for {new Date(currentReading.start_date).toLocaleDateString()} –{' '}
+            {new Date(currentReading.end_date).toLocaleDateString()}
           </div>
           <div className="text-sm text-gray-600 text-center mt-1">
             Logged in as: <span className="font-medium">{userName}</span>
+          </div>
+
+          {/* ── PARTICIPANTS BUTTON ── */}
+          {/* Place this next to whatever existing "Reading" or nav buttons you have.    */}
+          {/* The button below is self-contained; just drop it into your header area.    */}
+          <div className="flex justify-center mt-3">
+            <button
+              onClick={() => setShowParticipants(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m6-4a4 4 0 11-8 0 4 4 0 018 0zm6 4a2 2 0 100-4 2 2 0 000 4zM3 16a2 2 0 100-4 2 2 0 000 4z"
+                />
+              </svg>
+              Participants
+            </button>
           </div>
         </div>
       </div>
@@ -222,7 +206,7 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-sm p-8">
-          <p className="leading-relaxed text-base">
+          <div className="space-y-4">
             {verses.map((verse) => (
               <VerseDisplay
                 key={verse.id}
@@ -230,41 +214,23 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
                 onClick={() => handleVerseClick(verse)}
               />
             ))}
-          </p>
+          </div>
 
           {/* Complete Button */}
-<div className="mt-8 pt-8 border-t">
-  {hasCompleted ? (
-    <div className="space-y-3">
-      <div className="text-center text-green-600 font-medium">
-        ✓ You've marked this reading as complete
-      </div>
-      {(() => {
-        const currentIndex = allReadings.findIndex(r => r.id === currentReading.id);
-        const nextReading = allReadings[currentIndex + 1];
-        return nextReading ? (
-          <button
-            onClick={() => handleReadingSelect(nextReading)}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition font-medium"
-          >
-            Next Reading: {nextReading.book_name} {nextReading.chapter_number} →
-          </button>
-        ) : (
-          <div className="text-center text-gray-500 text-sm">
-            You've reached the end of the reading plan!
+          <div className="mt-8 pt-8 border-t">
+            {hasCompleted ? (
+              <div className="text-center text-green-600 font-medium">
+                ✓ You've marked this reading as complete
+              </div>
+            ) : (
+              <button
+                onClick={handleMarkComplete}
+                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition font-medium"
+              >
+                Mark as Finished Reading
+              </button>
+            )}
           </div>
-        );
-      })()}
-    </div>
-  ) : (
-    <button
-      onClick={handleMarkComplete}
-      className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition font-medium"
-    >
-      Mark as Finished Reading
-    </button>
-  )}
-</div>
         </div>
       </div>
 
@@ -275,6 +241,14 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
           currentUserId={userId}
           onClose={() => setShowCommentModal(false)}
           onSubmitComment={handleCommentSubmit}
+        />
+      )}
+
+      {/* ── PARTICIPANTS MODAL ── */}
+      {showParticipants && (
+        <ParticipantsModal
+          currentReadingId={currentReading.id}
+          onClose={() => setShowParticipants(false)}
         />
       )}
     </div>
