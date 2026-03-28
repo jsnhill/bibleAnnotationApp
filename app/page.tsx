@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Auth from '@/components/Auth';
 import ReadingPage from '@/components/ReadingPage';
 import AdminPanel from '@/components/AdminPanel';
+import ParticipantsModal from '@/components/ParticipantsModal';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,6 +11,8 @@ export default function Home() {
   const [userName, setUserName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [currentReadingId, setCurrentReadingId] = useState('');
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem('userId');
@@ -59,6 +62,17 @@ export default function Home() {
             >
               Reading
             </button>
+            <button
+              onClick={() => setShowParticipants(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-gray-600 hover:bg-gray-100"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m6-4a4 4 0 11-8 0 4 4 0 018 0zm6 4a2 2 0 100-4 2 2 0 000 4zM3 16a2 2 0 100-4 2 2 0 000 4z"
+                />
+              </svg>
+              Participants
+            </button>
             {isAdmin && (
               <button
                 onClick={() => setShowAdmin(true)}
@@ -78,10 +92,22 @@ export default function Home() {
           </button>
         </div>
       </nav>
+
       {showAdmin ? (
         <AdminPanel />
       ) : (
-        <ReadingPage userId={userId} userName={userName} />
+        <ReadingPage
+          userId={userId}
+          userName={userName}
+          onReadingLoaded={setCurrentReadingId}
+        />
+      )}
+
+      {showParticipants && (
+        <ParticipantsModal
+          currentReadingId={currentReadingId}
+          onClose={() => setShowParticipants(false)}
+        />
       )}
     </div>
   );

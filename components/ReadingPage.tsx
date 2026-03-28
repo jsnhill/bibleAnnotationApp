@@ -1,25 +1,23 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Reading, VerseWithComments } from '@/lib/types';
 import VerseDisplay from './VerseDisplay';
 import CommentModal from './CommentModal';
-import ParticipantsModal from './ParticipantsModal'; // ← NEW IMPORT
 
 interface ReadingPageProps {
   userId: string;
   userName: string;
+  onReadingLoaded?: (readingId: string) => void;
 }
 
-export default function ReadingPage({ userId, userName }: ReadingPageProps) {
+export default function ReadingPage({ userId, userName, onReadingLoaded }: ReadingPageProps) {
   const [currentReading, setCurrentReading] = useState<Reading | null>(null);
   const [verses, setVerses] = useState<VerseWithComments[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVerse, setSelectedVerse] = useState<VerseWithComments | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false); // ← NEW STATE
 
   useEffect(() => {
     loadCurrentReading();
@@ -37,6 +35,7 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
 
     if (reading) {
       setCurrentReading(reading);
+      onReadingLoaded?.(reading.id);
       await loadVerses(reading.id, reading.book_name, reading.chapter_number);
       await checkCompletion(reading.id);
     } else {
@@ -99,7 +98,7 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
       verse_number: verseNumber,
       comment_text: commentText,
     });
-    if (!error && currentReading) {
+    if (!error) {
       await loadVerses(currentReading.id, currentReading.book_name, currentReading.chapter_number);
     }
     setShowCommentModal(false);
@@ -127,6 +126,7 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
       .single();
     if (reading) {
       setCurrentReading(reading);
+      onReadingLoaded?.(reading.id);
       await loadVerses(reading.id, reading.book_name, reading.chapter_number);
       await checkCompletion(reading.id);
     }
@@ -153,7 +153,6 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-2">
@@ -180,30 +179,9 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
           <div className="text-sm text-gray-600 text-center mt-1">
             Logged in as: <span className="font-medium">{userName}</span>
           </div>
-
-          {/* ── PARTICIPANTS BUTTON ── */}
-          {/* Place this next to whatever existing "Reading" or nav buttons you have.    */}
-          {/* The button below is self-contained; just drop it into your header area.    */}
-          <div className="flex justify-center mt-3">
-            <button
-              onClick={() => setShowParticipants(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.8}
-                  d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m6-4a4 4 0 11-8 0 4 4 0 018 0zm6 4a2 2 0 100-4 2 2 0 000 4zM3 16a2 2 0 100-4 2 2 0 000 4z"
-                />
-              </svg>
-              Participants
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-sm p-8">
           <div className="space-y-4">
@@ -215,8 +193,6 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
               />
             ))}
           </div>
-
-          {/* Complete Button */}
           <div className="mt-8 pt-8 border-t">
             {hasCompleted ? (
               <div className="text-center text-green-600 font-medium">
@@ -234,21 +210,12 @@ export default function ReadingPage({ userId, userName }: ReadingPageProps) {
         </div>
       </div>
 
-      {/* Comment Modal */}
       {showCommentModal && selectedVerse && (
         <CommentModal
           verse={selectedVerse}
           currentUserId={userId}
           onClose={() => setShowCommentModal(false)}
           onSubmitComment={handleCommentSubmit}
-        />
-      )}
-
-      {/* ── PARTICIPANTS MODAL ── */}
-      {showParticipants && (
-        <ParticipantsModal
-          currentReadingId={currentReading.id}
-          onClose={() => setShowParticipants(false)}
         />
       )}
     </div>
