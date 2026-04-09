@@ -30,8 +30,8 @@ const WIT_STYLES = `
     --wit-muted: #7A7370;
     --wit-accent: #9B2335;
     --wit-accent-hover: #7D1C2B;
-    --wit-border: rgba(46,41,38,0.12);
-    --wit-input-bg: #FAFAF9;
+    --wit-border: rgba(46,41,38,0.28);
+    --wit-input-bg: #EDE8E3;
   }
   @media (prefers-color-scheme: dark) {
     :root {
