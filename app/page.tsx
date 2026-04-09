@@ -12,6 +12,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [currentReadingId, setCurrentReadingId] = useState('');
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem('userId');
@@ -92,6 +93,7 @@ export default function Home() {
 
       {showParticipants && (
         <ParticipantsModal
+          currentReadingId={currentReadingId}
           onClose={() => setShowParticipants(false)}
         />
       )}
@@ -102,6 +104,7 @@ export default function Home() {
         <ReadingPage
           userId={userId}
           userName={userName}
+          onReadingLoaded={setCurrentReadingId}
         />
       )}
     </div>
