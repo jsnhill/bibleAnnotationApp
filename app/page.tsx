@@ -27,11 +27,10 @@ export default function Home() {
     }
   }, []);
 
-  const handleAuthenticated = (id: string, name: string, isAdmin: boolean) => {
+  const handleAuthenticated = (id: string, name: string) => {
     setUserId(id);
     setUserName(name);
     setIsAuthenticated(true);
-    setIsAdmin(isAdmin);
   };
 
   const handleLogout = () => {
