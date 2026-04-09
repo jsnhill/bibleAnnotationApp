@@ -27,10 +27,11 @@ export default function Home() {
     }
   }, []);
 
-  const handleAuthenticated = (id: string, name: string) => {
+  const handleAuthenticated = (id: string, name: string, isAdmin: boolean) => {
     setUserId(id);
     setUserName(name);
     setIsAuthenticated(true);
+    setIsAdmin(isAdmin);
   };
 
   const handleLogout = () => {
@@ -61,17 +62,6 @@ export default function Home() {
             >
               Reading
             </button>
-            <button
-              onClick={() => setShowParticipants(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded text-gray-600 hover:bg-gray-100"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m6-4a4 4 0 11-8 0 4 4 0 018 0zm6 4a2 2 0 100-4 2 2 0 000 4zM3 16a2 2 0 100-4 2 2 0 000 4z"
-                />
-              </svg>
-              Participants
-            </button>
             {isAdmin && (
               <button
                 onClick={() => setShowAdmin(true)}
@@ -79,18 +69,34 @@ export default function Home() {
                   showAdmin ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Admin Panel
+                Admin
               </button>
             )}
+            <button
+              onClick={() => setShowParticipants(true)}
+              className="px-3 py-1 rounded text-gray-600 hover:bg-gray-100"
+            >
+              Participants
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">{userName}</span>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </nav>
+
+      {showParticipants && (
+        <ParticipantsModal
+          currentReadingId={currentReadingId}
+          onClose={() => setShowParticipants(false)}
+        />
+      )}
 
       {showAdmin ? (
         <AdminPanel />
@@ -98,14 +104,7 @@ export default function Home() {
         <ReadingPage
           userId={userId}
           userName={userName}
-          onReadingLoaded={setCurrentReadingId}
-        />
-      )}
-
-      {showParticipants && (
-        <ParticipantsModal
-          currentReadingId={currentReadingId}
-          onClose={() => setShowParticipants(false)}
+          onReadingChange={setCurrentReadingId}
         />
       )}
     </div>

@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 interface AuthProps {
-  onAuthenticated: (userId: string, userName: string) => void;
+  onAuthenticated: (userId: string, userName: string, isAdmin: boolean) => void;
 }
 
 type Step = 'password' | 'select-user' | 'register';
@@ -18,6 +18,7 @@ interface User {
   first_name: string;
   last_name: string;
   initials: string;
+  is_admin: boolean;
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -253,7 +254,7 @@ export default function Auth({ onAuthenticated }: AuthProps) {
   const fetchUsers = async () => {
     const { data } = await supabase
       .from('users')
-      .select('id, first_name, last_name, initials')
+      .select('id, first_name, last_name, initials, is_admin')
       .order('first_name');
     if (data) setUsers(data);
   };
@@ -263,7 +264,7 @@ export default function Auth({ onAuthenticated }: AuthProps) {
     setError('');
     setLoading(true);
 
-    const { data, error: fetchError } = await supabase
+    const { data: groupData } = await supabase
       .from('app_settings')
       .select('value')
       .eq('key', 'group_password')
@@ -271,22 +272,7 @@ export default function Auth({ onAuthenticated }: AuthProps) {
 
     setLoading(false);
 
-    if (fetchError || !data) {
-      setError('Unable to verify group key. Please try again.');
-      return;
-    }
-
-    if (data.value === groupKey) {
-      const { data: adminData } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'admin_password')
-        .single();
-
-      if (adminData && adminData.value === groupKey) {
-        sessionStorage.setItem('isAdmin', 'true');
-      }
-
+    if (groupData && groupData.value === groupKey) {
       setStep('select-user');
     } else {
       setError('Incorrect group key. Please try again.');
@@ -295,9 +281,11 @@ export default function Auth({ onAuthenticated }: AuthProps) {
 
   const handleUserSelect = (user: User) => {
     const fullName = `${user.first_name} ${user.last_name}`;
+    const isAdmin = user.is_admin === true;
     sessionStorage.setItem('userId', user.id);
     sessionStorage.setItem('userName', fullName);
-    onAuthenticated(user.id, fullName);
+    sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+    onAuthenticated(user.id, fullName, isAdmin);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
