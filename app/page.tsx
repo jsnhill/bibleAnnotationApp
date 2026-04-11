@@ -119,7 +119,7 @@ export default function Home() {
         <ReadingPage
           userId={userId}
           userName={userName}
-          onReadingChange={setCurrentReadingId}
+          onReadingLoaded={setCurrentReadingId}
         />
       )}
 
