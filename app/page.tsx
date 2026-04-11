@@ -4,6 +4,7 @@ import Auth from '@/components/Auth';
 import ReadingPage from '@/components/ReadingPage';
 import AdminPanel from '@/components/AdminPanel';
 import ParticipantsModal from '@/components/ParticipantsModal';
+import OnboardingModal from '@/components/OnboardingModal';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,6 +14,7 @@ export default function Home() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [currentReadingId, setCurrentReadingId] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem('userId');
@@ -26,6 +28,16 @@ export default function Home() {
       setIsAdmin(storedIsAdmin === 'true');
     }
   }, []);
+
+  // Show onboarding modal automatically unless user has dismissed it permanently
+  useEffect(() => {
+    if (isAuthenticated) {
+      const seen = localStorage.getItem('bibleapp_onboarding_seen');
+      if (!seen) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [isAuthenticated]);
 
   const handleAuthenticated = (id: string, name: string, isAdmin: boolean) => {
     setUserId(id);
@@ -69,7 +81,7 @@ export default function Home() {
                   showAdmin ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                Admin
+                Admin Panel
               </button>
             )}
             <button
@@ -78,25 +90,28 @@ export default function Home() {
             >
               Participants
             </button>
+            {/* Help / onboarding trigger */}
+            <button
+              onClick={() => setShowOnboarding(true)}
+              title="How to annotate"
+              className="w-6 h-6 rounded-full bg-gray-200 hover:bg-blue-100 text-gray-500 hover:text-blue-600 text-xs font-bold flex items-center justify-center transition"
+              aria-label="How to annotate"
+            >
+              ?
+            </button>
           </div>
+
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">{userName}</span>
             <button
               onClick={handleLogout}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
-              Sign out
+              Logout
             </button>
           </div>
         </div>
       </nav>
-
-      {showParticipants && (
-        <ParticipantsModal
-          currentReadingId={currentReadingId}
-          onClose={() => setShowParticipants(false)}
-        />
-      )}
 
       {showAdmin ? (
         <AdminPanel />
@@ -104,9 +119,20 @@ export default function Home() {
         <ReadingPage
           userId={userId}
           userName={userName}
-          onReadingLoaded={setCurrentReadingId}
+          onReadingChange={setCurrentReadingId}
         />
       )}
+
+      <ParticipantsModal
+        isOpen={showParticipants}
+        onClose={() => setShowParticipants(false)}
+        currentReadingId={currentReadingId}
+      />
+
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
     </div>
   );
 }

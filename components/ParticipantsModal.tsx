@@ -25,11 +25,12 @@ interface Completion {
 }
 
 interface ParticipantsModalProps {
+  isOpen: boolean;
   onClose: () => void;
   currentReadingId: string;
 }
 
-export default function ParticipantsModal({ onClose, currentReadingId }: ParticipantsModalProps) {
+export default function ParticipantsModal({ isOpen, onClose, currentReadingId }: ParticipantsModalProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [readings, setReadings] = useState<Reading[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
@@ -38,13 +39,8 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  // Close on backdrop click
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onClose();
-  };
+    if (isOpen) loadData();
+  }, [isOpen]);
 
   // Close on Escape key
   useEffect(() => {
@@ -58,33 +54,27 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
   const loadData = async () => {
     setLoading(true);
 
-    // Load all users sorted by first name
     const { data: usersData } = await supabase
       .from('users')
       .select('id, first_name, last_name')
       .order('first_name');
 
-    // Load all readings sorted by order_index
     const { data: readingsData } = await supabase
       .from('readings')
       .select('id, book_name, chapter_number, start_date, end_date, order_index')
       .order('order_index');
 
-    // Load all completions
     const { data: completionsData } = await supabase
       .from('reading_completions')
       .select('user_id, reading_id, completed_at');
 
-    // Load last active: most recent comment per user
     const { data: commentsData } = await supabase
       .from('comments')
       .select('user_id, created_at')
       .order('created_at', { ascending: false });
 
-    // Also consider reading completions for last active
     const lastActiveMap: Record<string, string> = {};
 
-    // Process comments for last active
     if (commentsData) {
       commentsData.forEach((c: any) => {
         if (!lastActiveMap[c.user_id]) {
@@ -93,7 +83,6 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
       });
     }
 
-    // Compare with completions for last active
     if (completionsData) {
       completionsData.forEach((c: any) => {
         const existing = lastActiveMap[c.user_id];
@@ -108,6 +97,11 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
     setCompletions(completionsData || []);
     setLastActive(lastActiveMap);
     setLoading(false);
+  };
+
+  // Close on backdrop click
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
   };
 
   const isCompleted = (userId: string, readingId: string): boolean => {
@@ -138,6 +132,8 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
   const formatReadingLabel = (reading: Reading): string => {
     return `${reading.book_name} ${reading.chapter_number}`;
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -177,11 +173,9 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr>
-                  {/* Sticky name column header */}
                   <th className="sticky left-0 z-20 bg-gray-50 border-b border-r border-gray-200 px-4 py-3 text-left font-semibold text-gray-700 min-w-[160px]">
                     Participant
                   </th>
-                  {/* Reading column headers */}
                   {readings.map((reading) => (
                     <th
                       key={reading.id}
@@ -205,7 +199,6 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
                     key={user.id}
                     className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}
                   >
-                    {/* Sticky name cell */}
                     <td
                       className={`sticky left-0 z-10 border-r border-gray-200 px-4 py-3 ${
                         rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
@@ -216,7 +209,6 @@ export default function ParticipantsModal({ onClose, currentReadingId }: Partici
                         {formatLastActive(lastActive[user.id])}
                       </div>
                     </td>
-                    {/* Completion cells */}
                     {readings.map((reading) => {
                       const done = isCompleted(user.id, reading.id);
                       const isCurrent = isCurrentReading(reading.id);
