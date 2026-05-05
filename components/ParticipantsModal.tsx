@@ -28,9 +28,10 @@ interface ParticipantsModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentReadingId: string;
+  groupId: string;
 }
 
-export default function ParticipantsModal({ isOpen, onClose, currentReadingId }: ParticipantsModalProps) {
+export default function ParticipantsModal({ isOpen, onClose, currentReadingId, groupId }: ParticipantsModalProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [readings, setReadings] = useState<Reading[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
@@ -39,8 +40,8 @@ export default function ParticipantsModal({ isOpen, onClose, currentReadingId }:
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) loadData();
-  }, [isOpen]);
+    if (isOpen && groupId) loadData();
+  }, [isOpen, groupId]);
 
   // Close on Escape key
   useEffect(() => {
@@ -54,23 +55,32 @@ export default function ParticipantsModal({ isOpen, onClose, currentReadingId }:
   const loadData = async () => {
     setLoading(true);
 
-    const { data: usersData } = await supabase
-      .from('users')
-      .select('id, first_name, last_name')
-      .order('first_name');
+    // Fetch only users who belong to this group via group_memberships
+    const { data: membershipsData } = await supabase
+      .from('group_memberships')
+      .select('user_id, users(id, first_name, last_name)')
+      .eq('group_id', groupId);
+
+    const groupUsers: User[] = (membershipsData || [])
+      .map((row: any) => row.users)
+      .filter(Boolean)
+      .sort((a: User, b: User) => a.first_name.localeCompare(b.first_name));
 
     const { data: readingsData } = await supabase
       .from('readings')
       .select('id, book_name, chapter_number, start_date, end_date, order_index')
+      .eq('group_id', groupId)
       .order('order_index');
 
     const { data: completionsData } = await supabase
       .from('reading_completions')
-      .select('user_id, reading_id, completed_at');
+      .select('user_id, reading_id, completed_at')
+      .eq('group_id', groupId);
 
     const { data: commentsData } = await supabase
       .from('comments')
       .select('user_id, created_at')
+      .eq('group_id', groupId)
       .order('created_at', { ascending: false });
 
     const lastActiveMap: Record<string, string> = {};
@@ -92,7 +102,7 @@ export default function ParticipantsModal({ isOpen, onClose, currentReadingId }:
       });
     }
 
-    setUsers(usersData || []);
+    setUsers(groupUsers);
     setReadings(readingsData || []);
     setCompletions(completionsData || []);
     setLastActive(lastActiveMap);

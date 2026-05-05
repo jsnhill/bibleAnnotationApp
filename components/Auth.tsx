@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 interface AuthProps {
-  onAuthenticated: (userId: string, userName: string, isAdmin: boolean) => void;
+  onAuthenticated: (userId: string, userName: string, isAdmin: boolean, groupId: string) => void;
 }
 
 type Step = 'password' | 'select-user' | 'register';
@@ -197,7 +197,7 @@ const WIT_STYLES = `
   }
 `;
 
-// ── Logo — outside Auth to avoid hook rule violations ────────────────────────
+// ── Logo ─────────────────────────────────────────────────────────────────────
 function Logo() {
   return (
     <svg className="wit-logo" viewBox="0 0 482 264" xmlns="http://www.w3.org/2000/svg" style={{fillRule:'evenodd',clipRule:'evenodd',strokeLinecap:'round',strokeLinejoin:'round'}}>
@@ -222,7 +222,7 @@ function Logo() {
   );
 }
 
-// ── Card wrapper — outside Auth, renders styles on every step ────────────────
+// ── Card wrapper ─────────────────────────────────────────────────────────────
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="wit-page">
@@ -239,6 +239,7 @@ function Card({ children }: { children: React.ReactNode }) {
 export default function Auth({ onAuthenticated }: AuthProps) {
   const [step, setStep] = useState<Step>('password');
   const [groupKey, setGroupKey] = useState('');
+  const [groupId, setGroupId] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -246,17 +247,26 @@ export default function Auth({ onAuthenticated }: AuthProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (step === 'select-user') {
+    if (step === 'select-user' && groupId) {
       fetchUsers();
     }
-  }, [step]);
+  }, [step, groupId]);
 
   const fetchUsers = async () => {
+    // Fetch only users who belong to this group via group_memberships
     const { data } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, initials, is_admin')
-      .order('first_name');
-    if (data) setUsers(data);
+      .from('group_memberships')
+      .select('user_id, users(id, first_name, last_name, initials, is_admin)')
+      .eq('group_id', groupId)
+      .order('user_id');
+
+    if (data) {
+      const members = data
+        .map((row: any) => row.users)
+        .filter(Boolean)
+        .sort((a: User, b: User) => a.first_name.localeCompare(b.first_name));
+      setUsers(members);
+    }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -265,14 +275,17 @@ export default function Auth({ onAuthenticated }: AuthProps) {
     setLoading(true);
 
     const { data: groupData } = await supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'group_password')
+      .from('groups')
+      .select('id, name')
+      .eq('group_password', groupKey.trim())
       .single();
 
     setLoading(false);
 
-    if (groupData && groupData.value === groupKey) {
+    if (groupData) {
+      sessionStorage.setItem('groupId', groupData.id);
+      sessionStorage.setItem('groupName', groupData.name);
+      setGroupId(groupData.id);
       setStep('select-user');
     } else {
       setError('Incorrect group key. Please try again.');
@@ -285,7 +298,7 @@ export default function Auth({ onAuthenticated }: AuthProps) {
     sessionStorage.setItem('userId', user.id);
     sessionStorage.setItem('userName', fullName);
     sessionStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
-    onAuthenticated(user.id, fullName, isAdmin);
+    onAuthenticated(user.id, fullName, isAdmin, groupId);
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -308,13 +321,29 @@ export default function Auth({ onAuthenticated }: AuthProps) {
 
     const { data, error: insertError } = await supabase
       .from('users')
-      .insert({ first_name: firstName, last_name: lastName, initials: finalInitials })
+      .insert({
+        first_name: firstName,
+        last_name: lastName,
+        initials: finalInitials,
+        group_id: groupId,
+      })
       .select()
       .single();
 
+    if (insertError || !data) {
+      setLoading(false);
+      setError('Unable to register. Please try again.');
+      return;
+    }
+
+    // Also insert into group_memberships
+    const { error: membershipError } = await supabase
+      .from('group_memberships')
+      .insert({ user_id: data.id, group_id: groupId });
+
     setLoading(false);
 
-    if (insertError || !data) {
+    if (membershipError) {
       setError('Unable to register. Please try again.');
       return;
     }

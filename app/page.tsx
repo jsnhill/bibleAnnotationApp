@@ -11,6 +11,7 @@ export default function Home() {
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [groupId, setGroupId] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [currentReadingId, setCurrentReadingId] = useState('');
@@ -20,12 +21,14 @@ export default function Home() {
     const storedUserId = sessionStorage.getItem('userId');
     const storedUserName = sessionStorage.getItem('userName');
     const storedIsAdmin = sessionStorage.getItem('isAdmin');
+    const storedGroupId = sessionStorage.getItem('groupId');
 
-    if (storedUserId && storedUserName) {
+    if (storedUserId && storedUserName && storedGroupId) {
       setUserId(storedUserId);
       setUserName(storedUserName);
-      setIsAuthenticated(true);
       setIsAdmin(storedIsAdmin === 'true');
+      setGroupId(storedGroupId);
+      setIsAuthenticated(true);
     }
   }, []);
 
@@ -39,21 +42,25 @@ export default function Home() {
     }
   }, [isAuthenticated]);
 
-  const handleAuthenticated = (id: string, name: string, isAdmin: boolean) => {
+  const handleAuthenticated = (id: string, name: string, isAdmin: boolean, groupId: string) => {
     setUserId(id);
     setUserName(name);
     setIsAuthenticated(true);
     setIsAdmin(isAdmin);
+    setGroupId(groupId);
   };
 
   const handleLogout = () => {
     sessionStorage.removeItem('userId');
     sessionStorage.removeItem('userName');
     sessionStorage.removeItem('isAdmin');
+    sessionStorage.removeItem('groupId');
+    sessionStorage.removeItem('groupName');
     setIsAuthenticated(false);
     setUserId('');
     setUserName('');
     setIsAdmin(false);
+    setGroupId('');
     setShowAdmin(false);
   };
 
@@ -114,11 +121,12 @@ export default function Home() {
       </nav>
 
       {showAdmin ? (
-        <AdminPanel />
+        <AdminPanel groupId={groupId} />
       ) : (
         <ReadingPage
           userId={userId}
           userName={userName}
+          groupId={groupId}
           onReadingLoaded={setCurrentReadingId}
         />
       )}
@@ -127,6 +135,7 @@ export default function Home() {
         isOpen={showParticipants}
         onClose={() => setShowParticipants(false)}
         currentReadingId={currentReadingId}
+        groupId={groupId}
       />
 
       <OnboardingModal

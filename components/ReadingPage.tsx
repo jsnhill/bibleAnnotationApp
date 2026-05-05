@@ -8,10 +8,11 @@ import CommentModal from './CommentModal';
 interface ReadingPageProps {
   userId: string;
   userName: string;
+  groupId: string;
   onReadingLoaded?: (readingId: string) => void;
 }
 
-export default function ReadingPage({ userId, userName, onReadingLoaded }: ReadingPageProps) {
+export default function ReadingPage({ userId, userName, groupId, onReadingLoaded }: ReadingPageProps) {
   const [currentReading, setCurrentReading] = useState<Reading | null>(null);
   const [verses, setVerses] = useState<VerseWithComments[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +21,8 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
   const [hasCompleted, setHasCompleted] = useState(false);
 
   useEffect(() => {
-    loadCurrentReading();
-  }, []);
+    if (groupId) loadCurrentReading();
+  }, [groupId]);
 
   const loadCurrentReading = async () => {
     setLoading(true);
@@ -29,6 +30,7 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
     const { data: reading } = await supabase
       .from('readings')
       .select('*')
+      .eq('group_id', groupId)
       .lte('start_date', today)
       .gte('end_date', today)
       .single();
@@ -54,7 +56,8 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
     const { data: comments } = await supabase
       .from('comments')
       .select('*, user:users(*)')
-      .eq('reading_id', readingId);
+      .eq('reading_id', readingId)
+      .eq('group_id', groupId);
 
     if (bibleVerses) {
       const versesWithComments: VerseWithComments[] = bibleVerses.map((verse) => {
@@ -81,6 +84,7 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
       .select('*')
       .eq('reading_id', readingId)
       .eq('user_id', userId)
+      .eq('group_id', groupId)
       .single();
     setHasCompleted(!!data);
   };
@@ -97,6 +101,7 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
       reading_id: currentReading.id,
       verse_number: verseNumber,
       comment_text: commentText,
+      group_id: groupId,
     });
     if (!error) {
       await loadVerses(currentReading.id, currentReading.book_name, currentReading.chapter_number);
@@ -109,6 +114,7 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
     const { error } = await supabase.from('reading_completions').insert({
       user_id: userId,
       reading_id: currentReading.id,
+      group_id: groupId,
     });
     if (!error) setHasCompleted(true);
   };
@@ -122,6 +128,7 @@ export default function ReadingPage({ userId, userName, onReadingLoaded }: Readi
     const { data: reading } = await supabase
       .from('readings')
       .select('*')
+      .eq('group_id', groupId)
       .eq('order_index', newIndex)
       .single();
     if (reading) {

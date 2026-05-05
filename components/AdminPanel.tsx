@@ -27,7 +27,11 @@ interface SchedulePreviewItem {
   endDate: string;
 }
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  groupId: string;
+}
+
+export default function AdminPanel({ groupId }: AdminPanelProps) {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [bookName, setBookName] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -40,13 +44,14 @@ export default function AdminPanel() {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    loadReadings();
-  }, []);
+    if (groupId) loadReadings();
+  }, [groupId]);
 
   const loadReadings = async () => {
     const { data } = await supabase
       .from('readings')
       .select('*')
+      .eq('group_id', groupId)
       .order('order_index');
     if (data) setReadings(data);
   };
@@ -100,11 +105,11 @@ export default function AdminPanel() {
     setConfirming(true);
     setMessage('');
 
-    // Delete all existing readings
+    // Delete only this group's existing readings
     const { error: deleteError } = await supabase
       .from('readings')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+      .eq('group_id', groupId);
 
     if (deleteError) {
       setMessage('Error clearing existing readings. Please try again.');
@@ -112,13 +117,14 @@ export default function AdminPanel() {
       return;
     }
 
-    // Insert new readings
+    // Insert new readings scoped to this group
     const newReadings = preview.map((item, index) => ({
       book_name: bookName,
       chapter_number: item.chapter,
       start_date: item.startDate,
       end_date: item.endDate,
       order_index: index + 1,
+      group_id: groupId,
     }));
 
     const { error: insertError } = await supabase
@@ -154,7 +160,8 @@ export default function AdminPanel() {
     const { data } = await supabase
       .from('reading_completions')
       .select(`*, user:users(first_name, last_name)`)
-      .eq('reading_id', readingId);
+      .eq('reading_id', readingId)
+      .eq('group_id', groupId);
     if (data) {
       const users = data.map((c: any) => `${c.user.first_name} ${c.user.last_name}`);
       alert(`Completed by:\n${users.join('\n') || 'No one yet'}`);
